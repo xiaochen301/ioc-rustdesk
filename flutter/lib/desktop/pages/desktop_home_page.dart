@@ -659,7 +659,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       // IOC-RustDesk: a card may now carry an empty link (every
                       // vendor URL is blanked), so also require link.isNotEmpty.
                       // Otherwise a "Help" row would render and try to open "".
-                      (help != null && link.isNotEmpty
+                      (help != null && link != null && link.isNotEmpty
                           ? <Widget>[
                               Center(
                                   child: InkWell(

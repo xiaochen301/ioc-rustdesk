@@ -703,7 +703,7 @@ class _DesktopTabState extends State<DesktopTab>
     // the same baseline as the four window action buttons on the right. It is
     // an overlay (IgnorePointer) so it never swallows the drag-to-move gesture
     // handled by the tab strip underneath.
-    if (!showSlogan) {
+    if (!widget.showSlogan) {
       return bar;
     }
     return Stack(
