@@ -151,13 +151,17 @@ jobs:
       - name: Build self-extracted installer
         shell: bash
         run: |
-          pip3 install requests argparse
-          # generate.py must run BEFORE cargo build: libs/portable/src/{main,bin_reader}.rs
-          # use include_bytes! for ../data.bin and ../app_metadata.toml, which are
-          # build-time artifacts. Upstream runs generate.py first for this reason.
-          python3 ./libs/portable/generate.py -f ./IOC-RustDesk/ -o . -e ./IOC-RustDesk/rustdesk.exe
+          # libs/portable/requirements.txt holds brotli, which generate.py needs
+          # to compress the payload. Installing requests/argparse instead left
+          # generate.py dying with ModuleNotFoundError.
+          pip3 install -r ./libs/portable/requirements.txt
+          # generate.py does everything: it writes data.bin and app_metadata.toml,
+          # then runs `cargo build --locked --release` itself (generate.py:68-77).
+          # Those two files are include_bytes! inputs for the packer, so it must
+          # run the cargo build after writing them and from inside libs/portable.
+          # Running cargo build separately, before it, is what broke the packer.
           pushd ./libs/portable
-          cargo build --locked --release
+          python3 ./generate.py -f ../../IOC-RustDesk/ -o . -e ../../IOC-RustDesk/rustdesk.exe
           popd
           mv ./target/release/rustdesk-portable-packer.exe ./IOC-RustDesk-${{ env.VERSION }}-x86_64.exe
 
