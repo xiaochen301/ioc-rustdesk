@@ -41,12 +41,9 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   double? get height => bind.isIncomingOnly() ? null : em * 3;
 
   void onUsePublicServerGuide() {
-    const url = "https://rustdesk.com/pricing";
-    canLaunchUrlString(url).then((can) {
-      if (can) {
-        launchUrlString(url);
-      }
-    });
+    // IOC-RustDesk: this prompted the user to rustdesk.com/pricing when the client
+    // was on the public server. The build is permanently on the self-hosted
+    // server, so the prompt is removed with its vendor link.
   }
 
   @override

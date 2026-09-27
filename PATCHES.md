@@ -29,14 +29,52 @@
 **重要机制说明（不是补丁，是上游既有行为）**：
 `src/common.rs:1087` `is_public()` 判定 URL 是否 `rustdesk.com` 系，命中则**主动关闭**心跳上报（`src/hbbs_http/sync.rs:286`）和审计上报（`src/common.rs:1122`）。把 API 指向内网后 `is_public()` 返回 false，这两个上报**反而会被激活**——这是自建服务器的功能（设备在线状态、审计日志），政务网需要，故保留。需求 1 的"去除上报"因此不等于"关掉 API"，两者方向相反。
 
-## 3. 去除官网入口（用户补充决策：全部去掉）
+## 3. 第三方服务与官网入口（用户追加决策：纯内网，第三方全部拆掉）
+
+**这一节是第二轮追加的扩展。** 第一轮只做"去除数据上报"，用户随后明确要求"所有访问第三方外部服务的功能全部拆掉"，范围扩大到运行时零外部依赖。
+
+### 3.1 nip.io —— 最重要的一处，第一轮遗漏
 
 | ID | 位置 | 改动 |
 |---|---|---|
-| IOC-007 | `flutter/lib/common.dart:3739` | `loadPowered()` 首行 `return SizedBox.shrink()`，移除 "powered by" 徽章（点击原本跳转 rustdesk.com） |
-| IOC-008 | `flutter/lib/desktop/pages/desktop_setting_page.dart:2449` | 删除"隐私声明"和"网站"两个 InkWell 行（`privacy.html` / 官网首页） |
+| IOC-022 | `libs/hbb_common/src/socket_client.rs:197` `ipv4_to_ipv6()` | 原本在 `!ipv4 && 是 IPv4 字面量` 时把地址改写成 `<ip>.nip.io`。**改为原样返回**，强制走纯 IPv4 中继 |
+| IOC-023 | `libs/hbb_common/src/socket_client.rs:189` `query_nip_io()` | 原本 `lookup_host("<ip>.nip.io:<port>")`。**改为 `bail!()`**；同时给 `anyhow::{bail, Context}` 补 import |
 
-**未处理项（如实记录）**：`desktop_home_page.dart:537-555` 的 SELinux / Wayland 警告卡片仍带 `link:` 指向 rustdesk.com 文档站。这些是 Linux 平台问题提示卡，只有在 SELinux enforcing 或 Wayland 登录场景下才出现，非政务网常规路径。**如需彻底清除请告知**，改动方式同 IOC-008。
+**为什么第一轮漏掉**：这两个函数不属于"数据上报"，是 NAT 穿透的实现手段。调用链为
+`client.rs:912` / `server.rs:324` 的 `create_relay` → `ipv4_to_ipv6(...)` → 改写地址 → `connect_tcp`，
+即**每一次中继连接**都会去公共 DNS 查一次 nip.io。第一轮只扫了 URL 字面量，而 nip.io 是**拼接出来的**（`format!("{ip}.nip.io")`），字面量扫描查不到，必须顺着 `to_socket_addrs` / `lookup_host` 的调用链反查才找得到。
+
+### 3.2 STUN（第一轮已做，见 IOC-005）
+
+### 3.3 全部厂商 URL 置空
+
+| ID | 位置 | 改动 |
+|---|---|---|
+| IOC-007 | `flutter/lib/common.dart:3739` | `loadPowered()` 首行 `return SizedBox.shrink()`，移除 "powered by" 徽章 |
+| IOC-008 | `flutter/lib/desktop/pages/desktop_setting_page.dart:2449` | 删除"隐私声明"和"网站"两个 InkWell 行 |
+| IOC-024 | `flutter/lib/desktop/pages/connection_page.dart:43` | `onUsePublicServerGuide()` 置空（原本点击跳 `rustdesk.com/pricing`） |
+| IOC-025 | `flutter/lib/desktop/pages/desktop_home_page.dart:533-551` | 移除 SELinux / Wayland / Wayland 登录屏三张警告卡的 `help` + `link` |
+| IOC-026 | `flutter/lib/desktop/pages/desktop_home_page.dart:661` | Help 行渲染条件从 `help != null` 改为 `help != null && link.isNotEmpty` |
+| IOC-027 | `src/client.rs:132` `SCRAP_X11_REF_URL` | 置空（X11 截屏错误弹窗的文档链接） |
+| IOC-028 | `src/client.rs:3336` `LOGIN_ERROR_MAP` | Wayland 登录错误的 `link` 置空 |
+| IOC-029 | `src/lang/en.rs:92,199` | `doc_mac_permission`、`doc_fix_wayland` 置空 |
+| IOC-030 | `libs/hbb_common/src/config.rs:100-105` | `LINK_DOCS_HOME`、`LINK_DOCS_X11_REQUIRED`、`LINK_HEADLESS_LINUX_SUPPORT` 置空（第三个原本是 **github.com wiki 链接**） |
+
+**IOC-026 是必须配套的改动**：置空 URL 后 `translate()` 返回 `""`，而渲染条件原本只判 `help != null`，会渲染出一个点击后执行 `launchUrl(Uri.parse(""))` 的 Help 行。不加此条件即引入新 bug。
+
+### 3.4 核实为安全、未改动的项
+
+| 位置 | 结论 |
+|---|---|
+| `src/plugin/manager.rs:62` | `raw.githubusercontent.com` 在**被注释掉的** `vec![]` 内，插件源列表实际为空，不发请求 |
+| `src/common.rs:2767-2805` | 全在 `#[test] fn test_is_public` / `test_should_use_tcp_proxy` 内，不编入 release |
+| `libs/hbb_common/src/websocket.rs:411-427` | `#[test] fn test_check_ws` 内，不编入 release |
+| `flutter/lib/main.dart:380,487,521` | Firebase Analytics 官方自己已全部注释掉 |
+
+### 3.5 关于 `.gitmodules` 中的 GitHub URL（用户曾质疑）
+
+`https://github.com/xiaochen301/hbb_common.git` **不是运行时行为**。`.gitmodules` 只在
+`git submodule update --init` 时被读取，即 GitHub Actions **编译阶段**拉源码用；编译产物 deb/exe 内不含此 URL，装机后运行时不会访问 GitHub。它是构建依赖，必须指向某个 git 托管地址——改成本地路径只会让云端编译失败。
 
 ## 4. 去除检查更新（需求 6）
 
