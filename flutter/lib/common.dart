@@ -3731,6 +3731,10 @@ Color? disabledTextColor(BuildContext context, bool enabled) {
 }
 
 Widget loadPowered(BuildContext context) {
+  // IOC-RustDesk: the "powered by" badge linked to rustdesk.com. Removed so the
+  // build ships no entry point to the vendor's site.
+  return SizedBox.shrink();
+  // ignore: dead_code
   if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
     return SizedBox.shrink();
   }

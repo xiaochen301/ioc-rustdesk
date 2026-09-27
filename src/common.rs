@@ -1018,6 +1018,12 @@ pub fn is_modifier(evt: &KeyEvent) -> bool {
 }
 
 pub fn check_software_update() {
+    // IOC-RustDesk: software update checking is permanently disabled. A
+    // custom client (app name != "RustDesk") always returns here; this build
+    // is always a custom client, so no version check ever runs, at startup or
+    // on demand.
+    return;
+    #[allow(unreachable_code)]
     if is_custom_client() {
         return;
     }
@@ -1159,7 +1165,7 @@ fn get_api_server_(api: String, custom: String) -> String {
             return format!("http://{}", s);
         }
     }
-    "https://admin.rustdesk.com".to_owned()
+    "http://10.211.0.10:21114".to_owned()
 }
 
 #[inline]
@@ -2636,6 +2642,9 @@ const IPV6_ROUTE_PROBE: std::net::Ipv6Addr =
 /// longer than this: a probe that outlived the minute could write an earlier network's address
 /// over a later probe's.
 const STUN_IPV6_TIMEOUT_MS: u64 = 5_000;
+// IOC-RustDesk: upstream 1.5.0 removed the IPv4 STUN probing entirely (stun_ipv4_test,
+// STUNS_V4/V6 and test_nat_ipv4 no longer exist anywhere), so the previous "disable STUN v4"
+// edit that lived here is gone with them. IPv6 STUN is still disabled in test_ipv6() below.
 
 async fn test_bind_ipv6() -> ResultType<SocketAddr> {
     let local_addr = SocketAddr::from(([0u16; 8], 0)); // [::]:0
@@ -2651,6 +2660,19 @@ async fn test_bind_ipv6() -> ResultType<SocketAddr> {
 }
 
 pub async fn test_ipv6() -> Option<tokio::task::JoinHandle<()>> {
+    // IOC-RustDesk: STUN discovery is disabled so this build never contacts
+    // third-party NAT traversal servers. Without a discovered public IPv6
+    // address, `get_ipv6_socket()` returns None and the connection falls back
+    // to the self-hosted rendezvous/relay path, which is the intended
+    // behaviour on an air-gapped deployment.
+    return None;
+    #[allow(unreachable_code)]
+    if PUBLIC_IPV6_ADDR
+        .lock()
+        .unwrap()
+        .1
+        .map(|x| x.elapsed().as_secs() < 60)
+        .unwrap_or(false)
     {
         // One look and one claim of the minute, under one lock: two connections arriving
         // together would otherwise both find it over and both probe.

@@ -40,6 +40,9 @@ const String kPeerPlatformWebDesktop = "WebDesktop";
 
 const double kScrollbarThickness = 12.0;
 
+/// IOC-RustDesk: deployment banner shown centred in the desktop title bar.
+const String kGovEditionSlogan = 'IOC-政务网专用版';
+
 /// [kAppTypeMain] used by 'Desktop Main Page' , 'Mobile (Client and Server)', "Install Page"
 const String kAppTypeMain = "main";
 

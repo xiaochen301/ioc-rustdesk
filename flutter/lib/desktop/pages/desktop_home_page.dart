@@ -428,7 +428,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   Widget buildHelpCards(String updateUrl) {
-    if (!bind.isCustomClient() &&
+    // IOC-RustDesk: the "new version available" card and its download/update
+    // buttons. Software updates are disabled in this build, so the card is
+    // dropped entirely along with every rustdesk.com / github.com entry point.
+    if (true) {
+      // fall through to the non-update cards below
+    } else if (!bind.isCustomClient() &&
         updateUrl.isNotEmpty &&
         !isCardClosed &&
         bind.mainUriPrefixSync().contains('rustdesk')) {

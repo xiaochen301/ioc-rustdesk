@@ -241,6 +241,8 @@ class DesktopTab extends StatefulWidget {
   final bool showMinimize;
   final bool showMaximize;
   final bool showClose;
+  /// IOC-RustDesk: show the "IOC-政务网专用版" banner centred in the title bar.
+  final bool showSlogan;
   final Widget Function(Widget pageView)? pageViewBuilder;
   // Right click tab menu
   final TabMenuBuilder? tabMenuBuilder;
@@ -267,6 +269,7 @@ class DesktopTab extends StatefulWidget {
     this.showMinimize = true,
     this.showMaximize = true,
     this.showClose = true,
+    this.showSlogan = true,
     this.pageViewBuilder,
     this.tabMenuBuilder,
     this.tail,
@@ -594,7 +597,7 @@ class _DesktopTabState extends State<DesktopTab>
 
   Widget _buildBar() {
     final isIncomingHomePage = bind.isIncomingOnly() && isInHomePage();
-    return Row(
+    final bar = Row(
       children: [
         Expanded(
             child: GestureDetector(
@@ -694,6 +697,37 @@ class _DesktopTabState extends State<DesktopTab>
           onClose: onWindowCloseButton,
           labelGetter: labelGetter,
         ).paddingOnly(left: 10)
+      ],
+    );
+    // IOC-RustDesk: deployment banner, centred in the title bar so it sits on
+    // the same baseline as the four window action buttons on the right. It is
+    // an overlay (IgnorePointer) so it never swallows the drag-to-move gesture
+    // handled by the tab strip underneath.
+    if (!showSlogan) {
+      return bar;
+    }
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        bar,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Center(
+              child: Text(
+                kGovEditionSlogan,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                softWrap: false,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: MyTheme.tabbar(context).selectedTextColor,
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

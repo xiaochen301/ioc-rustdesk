@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=RustDesk
+Name=IOC-RustDesk
 GenericName=Remote Desktop
-Comment=Remote Desktop
+Comment=IOC-政务网专用版
 Exec=rustdesk %u
 Icon=rustdesk
 Terminal=false
