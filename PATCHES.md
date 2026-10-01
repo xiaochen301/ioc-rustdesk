@@ -133,6 +133,26 @@
 
 ---
 
+## 7. 三项默认配置（第三轮追加）
+
+| ID | 位置 | 改动 |
+|---|---|---|
+| IOC-031 | `libs/hbb_common/src/config.rs:2831` `option2bool()` | 空值分支：`enable-lan-discovery` 未设置时按「拒绝」（false）——设备出厂默认不响应局域网发现广播 |
+| IOC-032 | 同上 | 空值分支：`direct-server` 未设置时按「允许」（true）——出厂默认开启 IP 直接访问 |
+| IOC-033 | 同上 | 空值分支：`enable-check-update` 未设置时按「关闭」（false）——与第 4 节三层关闭配套，读取层默认也为关 |
+| IOC-034 | `flutter/lib/common.dart:1625` | Dart 镜像实现同步加入同款空值分支（上游注释要求 rust/dart/sciter 行为一致；sciter 不在交付物内，未改） |
+| IOC-035 | `libs/hbb_common/src/config.rs:3374` | 新增单测 `test_ioc_option2bool_defaults`，锁定「空值默认」与「显式值不改」两组行为 |
+
+**设计要点**：三项改动全部收敛在「选项从未被设置过」（空值）这一分支——不写配置文件、不覆盖任何显式设定过的值。新装机器按新默认，已改过个人设置的机器不受打扰。所有布尔读取路径（Rust `Config::get_bool_option`、Dart `mainGetBoolOption*` / `mainGetLocalBoolOption*`）都经过 `option2bool`，UI 显示与实际行为天然一致。
+
+**LAN 发现语义**：对应上游设置项 `Deny LAN discovery`（`reverse: true` 显示），默认勾选 = 不响应发现广播（隐身）。主动扫描仅在用户手动打开发现页时触发，属显式操作，不干预。
+
+**验证**：
+- 单测：`cargo test test_ioc_option2bool_defaults` 通过（本机，1 passed）
+- 构建：随本轮提交由 `ioc-build.yml` 产出 Windows exe / Linux deb
+
+---
+
 ## 欠账与风险
 
 | # | 项 | 说明 |

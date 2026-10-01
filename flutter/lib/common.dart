@@ -1614,6 +1614,20 @@ String translate(String name) {
 // rust: libs/hbb_common/src/config.rs -> option2bool()
 // sciter: Does not have the function, but it should be kept the same.
 bool option2bool(String option, String value) {
+  // IOC-RustDesk: government-network defaults, applied only while the
+  // option has never been set (empty value). A user-set value always wins.
+  // Keep this block in sync with libs/hbb_common/src/config.rs.
+  if (value.isEmpty) {
+    if (option == kOptionEnableLanDiscovery) {
+      return false; // deny LAN discovery by default
+    }
+    if (option == kOptionDirectServer) {
+      return true; // allow direct IP access by default
+    }
+    if (option == kOptionEnableCheckUpdate) {
+      return false; // never check for a software update
+    }
+  }
   bool res;
   if (option.startsWith("enable-")) {
     res = value != "N";
