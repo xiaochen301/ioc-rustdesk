@@ -63,6 +63,7 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 | IOC-029 | `src/lang/en.rs` | `doc_mac_permission`、`doc_fix_wayland` 置空 |
 | IOC-030 | `libs/hbb_common/src/config.rs` | `LINK_DOCS_HOME`、`LINK_DOCS_X11_REQUIRED` 置空。**1.5.0 变更**：`LINK_HEADLESS_LINUX_SUPPORT`（原 github.com wiki 链接）由上游删除（常量与引用一并移除），本补丁不再涉及该常量 |
 | IOC-037 | `flutter/lib/desktop/pages/install_page.dart`（安装/欢迎页） | 删除 "End-user license agreement" 行（原链接 `rustdesk.com/privacy.html`）。1.4.9 两轮遗漏此页面，1.5.0 升级复查时补上 |
+| IOC-038 | `libs/hbb_common/src/config.rs` `PROD_RENDEZVOUS_SERVER` 初值 | 由空字符串改为 `10.211.0.10`（使用上游"生产服务器"机制）。效果：① `using_public_server()` 在未手动配置的客户端上正确返回 false——"如果需要更快连接速度，你可以选择自建服务器"引导不再出现（该提示本意只针对真正没配置服务器的公共用户）；② 服务器解析链在"用户手填配置"之下新增一层编译期钉子。用户仍可通过 `custom-rendezvous-server` 手动覆盖 |
 
 ### 3.4 核实为安全、未改动的项
 
@@ -207,6 +208,7 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 | defaults（含 keys 适配 amend） | `38a0d89` | `ded1e27` |
 | （新）WebRTC STUN 清空 | — | `fc01759` |
 | （新）nat64 测试适配 | — | `d420e19` |
+| （新）IOC-038 PROD 服务器钉子 | — | `79916a7` |
 
 **升级中的关键适配**（详见各节）：
 1. §2 IOC-005：上游删除 IPv4 STUN 全套，补丁收敛；IPv6 STUN 保持禁用。
