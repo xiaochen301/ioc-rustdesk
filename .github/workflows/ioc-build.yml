@@ -374,6 +374,11 @@ jobs:
 
             # Setup Flutter
             git config --global --add safe.directory "*"
+            # PATH must be exported before the first flutter call: the tarball
+            # extracts to /opt/flutter, and `flutter doctor` below runs before
+            # the export that used to sit further down, so it died with
+            # "flutter: command not found" (exit 127).
+            export PATH=/opt/flutter/bin:$PATH
             pushd /opt
             wget https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
             tar xf flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
@@ -384,7 +389,6 @@ jobs:
 
             # build flutter + deb (no rpm, no arch, no appimage)
             pushd /workspace
-            export PATH=/opt/flutter/bin:$PATH
             export DEB_ARCH=${{ matrix.job.deb_arch }}
             python3 ./build.py --flutter --skip-cargo
             ls -l /workspace/*.deb
