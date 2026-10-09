@@ -76,8 +76,10 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 
 ### 3.5 关于 `.gitmodules` 中的 GitHub URL（用户曾质疑）
 
-`https://github.com/xiaochen301/hbb_common.git` **不是运行时行为**。`.gitmodules` 只在
+`https://github.com/xiaochen301/ioc-hbb_common.git` **不是运行时行为**。`.gitmodules` 只在
 `git submodule update --init` 时被读取，即 GitHub Actions **编译阶段**拉源码用；编译产物 deb/exe 内不含此 URL，装机后运行时不会访问 GitHub。它是构建依赖，必须指向某个 git 托管地址——改成本地路径只会让云端编译失败。
+
+**2026-10-09 迁移（IOC-040）**：GitHub 对本账户下的 **fork 仓库禁用了 Actions 执行**（`workflow_dispatch` 与 push 事件均不产生 run；仓库设置显示 `enabled=true`，平台层在执行时拦截；同类社区案例（Discussion #195528）指向账户/平台级风控。**实测同一账户的非 fork 仓库 Actions 完全正常**）。构建链自此迁移到**非 fork 仓库**：主仓库 `xiaochen301/ioc-rustdesk`、子模块 `xiaochen301/ioc-hbb_common`（原 fork `xiaochen301/rustdesk`、`xiaochen301/hbb_common` 保留作历史镜像，不再用于 CI）。`.gitmodules` URL 已同步更新；本变更仅涉及构建托管面，产物内容不变。
 
 ## 4. 去除检查更新（需求 6）
 
