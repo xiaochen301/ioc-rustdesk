@@ -135,6 +135,13 @@ jobs:
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/${{ matrix.job.flutter-arch }}/runner/Release ./IOC-RustDesk
 
+          # IOC-039: ship the executable under the app name. The installer, shortcuts,
+          # start-menu/auto-start entries, uninstaller and the app's own session lookup
+          # all resolve <app name>.exe inside the install dir; the stock rustdesk.exe
+          # only worked for stock builds, where RustDesk.exe and rustdesk.exe are the
+          # same file on Windows. IOC-RustDesk.exe is not.
+          mv ./IOC-RustDesk/rustdesk.exe ./IOC-RustDesk/IOC-RustDesk.exe
+
           # Download usbmmidd_v2.zip and extract it to ./IOC-RustDesk
           Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
           Expand-Archive usbmmidd_v2.zip -DestinationPath .
@@ -198,7 +205,8 @@ jobs:
           # run the cargo build after writing them and from inside libs/portable.
           # Running cargo build separately, before it, is what broke the packer.
           pushd ./libs/portable
-          python3 ./generate.py -f ../../IOC-RustDesk/ -o . -e ../../IOC-RustDesk/rustdesk.exe
+          # IOC-039: the packer entry must match the renamed executable ("Build rustdesk" renames it).
+          python3 ./generate.py -f ../../IOC-RustDesk/ -o . -e ../../IOC-RustDesk/IOC-RustDesk.exe
           popd
           mv ./target/release/rustdesk-portable-packer.exe ./IOC-RustDesk-${{ env.VERSION }}-x86_64.exe
 

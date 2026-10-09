@@ -101,6 +101,7 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 | IOC-017 | `res/rustdesk.desktop` | `Name=RustDesk`→`IOC-RustDesk`，`Comment`→`IOC-政务网专用版` |
 | IOC-018 | `res/rustdesk-link.desktop` | `Name` → `IOC-RustDesk` |
 | IOC-019 | `flutter/windows/runner/Runner.rc` | `CompanyName`→`IOC`，`FileDescription`→`IOC-RustDesk Remote Desktop`，`LegalCopyright`→`Government network edition.`，`ProductName`→`IOC-RustDesk` |
+| IOC-039 | `.github/workflows/ioc-build.yml`（Windows job 两处） | **可执行文件随包改名**：打包前 `mv ./IOC-RustDesk/rustdesk.exe ./IOC-RustDesk/IOC-RustDesk.exe`，portable packer 入口同步为 `-e ../../IOC-RustDesk/IOC-RustDesk.exe`。修复安装链断裂（快捷方式/图标/服务/自启/卸载器/`is_installed` 全按 `{app_name}.exe` 寻址）；恢复上游定制机制"进程名恒为 `<appname>.exe`"形态，详见下方勘误段 |
 
 **IOC-014 的连锁效果**（官方设计，无需额外代码）：
 - `is_custom_client()` 变 true → 检查更新短路、设置页相关项消失
@@ -110,7 +111,7 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 - Linux IPC socket → `/tmp/IOC-RustDesk/`
 - 托盘图标 tooltip、窗口标题 → `IOC-RustDesk`
 
-**已决策不改的项：可执行文件名保持 `rustdesk` / `rustdesk.exe`。**
+**~~已决策不改的项：可执行文件名保持 `rustdesk` / `rustdesk.exe`。~~（已反转：2026-10-09 起二进制改名为 `IOC-RustDesk.exe`，见下方勘误段）**
 理由：改二进制名会踩三处上游硬编码，风险高收益低——
 1. `src/core_main.rs` `pkill -f "{app_name().to_lowercase()} --tray"`：改了就与实际进程名不符，托盘无法互杀，会残留多进程
 2. `libs/portable/src/bin_reader.rs` 自解压包的 `"rustdesk"` 魔数双向匹配；`libs/portable/generate.py` 写入魔数
@@ -118,6 +119,15 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 
 最终形态：包名 `ioc-rustdesk`、界面/托盘/标题 `IOC-RustDesk`、二进制 `rustdesk`。
 **如需连二进制一并改名，是独立的一次改动，需同步上述 5 处，请单独提需求。**
+
+**【2026-10-09 勘误 · "不改二进制名"决策反转】**
+原决策（9-27）：二进制名保持 `rustdesk` / `rustdesk.exe`，理由"改二进制名会踩三处硬编码、风险高收益低"。用户 1.5.0 安装实测暴露反向事故：**正是不改名导致安装链断裂**——安装器（`install_me`）、桌面/开始菜单快捷方式、开机自启（Tray）、服务、卸载器、`is_installed()` 全部按 `{app_name}.exe` = `IOC-RustDesk.exe` 寻址，而包内实际文件是 `rustdesk.exe`，**两者不是大小写差异**（官方版 `RustDesk.exe` ≡ `rustdesk.exe` 靠 Windows 文件名大小写不敏感掩盖了同一假设，定制名无法继承）。上游设计意图本已写明（`libs/portable/src/bin_reader.rs` merge 注释）："Rename on extraction so the process is always `<appname>.exe`, which the app itself relies on to find its own sessions."
+原列三处障碍逐项复核：
+1. `src/core_main.rs` pkill——**Linux 专用**（`#[cfg(target_os="linux")]`），Windows 不受影响（Linux 侧另有存量遗留，见欠账 R-6）；
+2. `bin_reader.rs` / `generate.py` 的 `"rustdesk"` 魔数——**与 exe 文件名无关**（blob 格式标识，不含文件名字段），无需同步；
+3. `win_topmost_window` 的 broker 名 / `libs/portable/src/main.rs` 的 taskkill——**独立辅助进程**（`RuntimeBroker_rustdesk.exe`），与主 exe 名无耦合，不受影响。
+**处置（IOC-039）**：二进制随包改名为 `IOC-RustDesk.exe`——CI/打包层改动，零 Rust 源码补丁；解压目录随之为 `%LOCALAPPDATA%\ioc-rustdesk\`（上游定制机制"a custom client gets its own directory"）。
+最终形态（2026-10-09 起）：包名 `ioc-rustdesk`、界面/托盘/标题 `IOC-RustDesk`、二进制 `IOC-RustDesk.exe`。
 
 ## 6. 标语（需求 5）
 
@@ -179,6 +189,7 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 | R-3 | 链接残留（明示） | `flutter/lib/mobile/**`（settings/connection 页）与 `src/ui/*.tis`（sciter 旧界面）中仍有 rustdesk.com 链接：前者不在交付物（不构建移动版），后者上游已弃用不构建。与 1.4.9 口径一致，未处理 |
 | R-4 | 标语作用域 | 见 §6 IOC-021 下方"未决策项" |
 | R-5 | 上游升级 | 基线已从 1.4.9 升至 1.5.0（重放流程与提交映射见 §9）。今后升级沿用同一流程：双仓库（主仓库 + hbb_common）逐提交重放 → 全量 IOC 落点复查 → **上游新增外联面扫描**（本次新增 WebRTC/STUN 面即为实例）→ CI 双链路构建 |
+| R-6 | Linux pkill 前缀（推演，待实测） | `core_main.rs` 的 `pkill -f "{app_name.lowercase()} --tray"` 期望匹配 `ioc-rustdesk --tray`，而 Linux deb 的二进制与路径仍为 `rustdesk`（`/usr/share/rustdesk/rustdesk`）——该清理路径实际匹配不到，属 Linux 侧存量问题。本次仅修 Windows 链路（IOC-039）；Linux 待实测后按需处理（备选：deb 二进制同步改名，或匹配串改用实际安装名） |
 
 ## 9. 1.5.0 升级记录（2026-10-08）
 
