@@ -136,7 +136,7 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 现象：目标机器上装有官方 `rustdesk` 包时，安装 `ioc-rustdesk-*.deb` 失败——dpkg 报 `正试图覆盖 /usr/share/applications/rustdesk-link.desktop，它同时被包含于软件包 rustdesk 1.5.0`（Deepin 25 磐石环境本机实测复现；写入前即中止，不损坏已装文件）。
 根因：`ioc-rustdesk` 与官方 `rustdesk` 安装同一套文件（`/usr/share/rustdesk/`、`/usr/bin/rustdesk`、desktop/图标/服务等 126 项），属替换关系；但 control 未声明 `Conflicts/Replaces: rustdesk`，dpkg 的覆盖保护按惯例拒绝安装（不同名的包不得覆盖对方文件）。
 修复：`generate_control_file()` 模板增加 `Conflicts: rustdesk` + `Replaces: rustdesk`（与上游 1.5.0 DRM 变体包 `retarget_control_to_drm_variant()` 的既定做法一致）。
-效果：`apt install ./ioc-rustdesk-*.deb`（含图形安装器路径）在单一事务内自动卸载官方 rustdesk 并安装本包；裸 `dpkg -i` 给出明确的冲突类提示（不再报文件覆盖、不再触发任何解包动作）；干净机器安装行为不变；已装旧版 `ioc-rustdesk` 的机器为同包升级，不受影响。
+效果（2026-10-11 Debian 12 容器四场景实测）：`apt install ./ioc-rustdesk-*.deb`（含图形安装器路径）单事务自动"卸载官方 rustdesk + 安装本包"；裸 `dpkg -i` 亦原生自动替换（dpkg 输出 `considering removing rustdesk in favour of ioc-rustdesk`，无需手动卸载）；干净机器直接安装成功；已装旧版 `ioc-rustdesk`（r3）的机器走同包升级（`1 upgraded`），不受影响。修复版构建提交 `98b50292d`（CI run `38106496473` 四 job 全绿），产物 `ioc-rustdesk-1.5.0-20261011-r4.deb`（sha256 `a7bf2ebe…b7400`，已交付）。
 边界（独立存量项，不在本次范围）：`--drm` 变体构建时，`retarget_control_to_drm_variant()` 仍按 `Package: rustdesk` 匹配（对改名后的 `ioc-rustdesk` 不匹配，若启用该路径会 fail-loud 而非静默出包）；CI 未使用 `--drm`。
 
 ## 6. 标语（需求 5）
