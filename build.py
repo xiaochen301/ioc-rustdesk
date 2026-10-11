@@ -357,6 +357,13 @@ def generate_control_file(version):
     control_file_path = "../res/DEBIAN/control"
     system2('/bin/rm -rf %s' % control_file_path)
 
+    # ioc-rustdesk installs the same file set as the stock `rustdesk` package (both write
+    # /usr/share/rustdesk/, /usr/bin/rustdesk, the desktop entries, icons and the unit), so it is a
+    # drop-in replacement: declare that relationship or dpkg refuses to install over an existing
+    # rustdesk package ("trying to overwrite ... which is also in package rustdesk"). With these two
+    # fields `apt install ./ioc-rustdesk-*.deb` removes stock rustdesk and installs this package in
+    # one transaction -- the same pattern retarget_control_to_drm_variant() uses for the DRM variant.
+    # [IOC-041]
     content = """Package: ioc-rustdesk
 Section: net
 Priority: optional
@@ -366,6 +373,8 @@ Maintainer: IOC <info@rustdesk.com>
 Homepage: https://rustdesk.com
 Depends: libgtk-3-0t64 | libgtk-3-0, libxcb-randr0, libxdo3 | libxdo4, libxfixes3, libxcb-shape0, libxcb-xfixes0, libasound2t64 | libasound2, libsystemd0, curl, libva2, libva-drm2, libva-x11-2, libgstreamer-plugins-base1.0-0, gstreamer1.0-pipewire%s
 Recommends: libayatana-appindicator3-1
+Conflicts: rustdesk
+Replaces: rustdesk
 Description: IOC-RustDesk (government network edition) remote control software.
 
 """ % (version, get_deb_arch(), get_deb_extra_depends())

@@ -104,6 +104,7 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 | IOC-018 | `res/rustdesk-link.desktop` | `Name` → `IOC-RustDesk` |
 | IOC-019 | `flutter/windows/runner/Runner.rc` | `CompanyName`→`IOC`，`FileDescription`→`IOC-RustDesk Remote Desktop`，`LegalCopyright`→`Government network edition.`，`ProductName`→`IOC-RustDesk` |
 | IOC-039 | `.github/workflows/ioc-build.yml`（Windows job 两处） | **可执行文件随包改名**：打包前 `mv ./IOC-RustDesk/rustdesk.exe ./IOC-RustDesk/IOC-RustDesk.exe`，portable packer 入口同步为 `-e ../../IOC-RustDesk/IOC-RustDesk.exe`。修复安装链断裂（快捷方式/图标/服务/自启/卸载器/`is_installed` 全按 `{app_name}.exe` 寻址）；恢复上游定制机制"进程名恒为 `<appname>.exe`"形态，详见下方勘误段 |
+| IOC-041 | `build.py` `generate_control_file()` | deb control 增加 `Conflicts: rustdesk` + `Replaces: rustdesk`——声明与官方 `rustdesk` 包的替换关系（二者装同一套文件、不可共存）；修复"机器上装有官方 rustdesk 时 ioc-rustdesk 无法安装（dpkg 文件覆盖保护拒绝）"（2026-10-11，详见下方勘误段） |
 
 **IOC-014 的连锁效果**（官方设计，无需额外代码）：
 - `is_custom_client()` 变 true → 检查更新短路、设置页相关项消失
@@ -130,6 +131,13 @@ IOC-006 详情：官方自己已把 Firebase Analytics 全部注释掉，本项�
 3. `win_topmost_window` 的 broker 名 / `libs/portable/src/main.rs` 的 taskkill——**独立辅助进程**（`RuntimeBroker_rustdesk.exe`），与主 exe 名无耦合，不受影响。
 **处置（IOC-039）**：二进制随包改名为 `IOC-RustDesk.exe`——CI/打包层改动，零 Rust 源码补丁；解压目录随之为 `%LOCALAPPDATA%\ioc-rustdesk\`（上游定制机制"a custom client gets its own directory"）。
 最终形态（2026-10-09 起）：包名 `ioc-rustdesk`、界面/托盘/标题 `IOC-RustDesk`、二进制 `IOC-RustDesk.exe`。
+
+**【2026-10-11 勘误 · deb 缺失与官方 rustdesk 的替换声明（IOC-041）】**
+现象：目标机器上装有官方 `rustdesk` 包时，安装 `ioc-rustdesk-*.deb` 失败——dpkg 报 `正试图覆盖 /usr/share/applications/rustdesk-link.desktop，它同时被包含于软件包 rustdesk 1.5.0`（Deepin 25 磐石环境本机实测复现；写入前即中止，不损坏已装文件）。
+根因：`ioc-rustdesk` 与官方 `rustdesk` 安装同一套文件（`/usr/share/rustdesk/`、`/usr/bin/rustdesk`、desktop/图标/服务等 126 项），属替换关系；但 control 未声明 `Conflicts/Replaces: rustdesk`，dpkg 的覆盖保护按惯例拒绝安装（不同名的包不得覆盖对方文件）。
+修复：`generate_control_file()` 模板增加 `Conflicts: rustdesk` + `Replaces: rustdesk`（与上游 1.5.0 DRM 变体包 `retarget_control_to_drm_variant()` 的既定做法一致）。
+效果：`apt install ./ioc-rustdesk-*.deb`（含图形安装器路径）在单一事务内自动卸载官方 rustdesk 并安装本包；裸 `dpkg -i` 给出明确的冲突类提示（不再报文件覆盖、不再触发任何解包动作）；干净机器安装行为不变；已装旧版 `ioc-rustdesk` 的机器为同包升级，不受影响。
+边界（独立存量项，不在本次范围）：`--drm` 变体构建时，`retarget_control_to_drm_variant()` 仍按 `Package: rustdesk` 匹配（对改名后的 `ioc-rustdesk` 不匹配，若启用该路径会 fail-loud 而非静默出包）；CI 未使用 `--drm`。
 
 ## 6. 标语（需求 5）
 
